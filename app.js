@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     const cameraCanvas = document.getElementById('camera-canvas');
     const captureBtn = document.getElementById('capture-btn');
     const switchCameraBtn = document.getElementById('switch-camera');
-    const syncBtn = document.getElementById('sync-btn');
     const gallery = document.getElementById('gallery');
     const statusEl = document.getElementById('status');
     const storageSpaceEl = document.getElementById('storage-space');
@@ -22,7 +21,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Inicializar IndexedDB
     async function initDB() {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open('CameraAppDB', 1);
+            const request = indexedDB.open('CameraAppStorage', 1);
             
             request.onerror = (event) => {
                 console.error('Erro ao abrir IndexedDB:', event.target.error);
@@ -37,26 +36,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
                 if (!db.objectStoreNames.contains('photos')) {
-                    db.createObjectStore('photos', { keyPath: 'id' });
+                    const store = db.createObjectStore('photos', { keyPath: 'id' });
+                    store.createIndex('timestamp', 'timestamp', { unique: false });
                 }
             };
         });
     }
-    
-    // Inicializar Firebase (opcional - descomente se quiser sincronização)
-    /*
-    const firebaseConfig = {
-        apiKey: "SUA_API_KEY",
-        authDomain: "SEU_PROJETO.firebaseapp.com",
-        projectId: "SEU_PROJETO",
-        storageBucket: "SEU_PROJETO.appspot.com",
-        messagingSenderId: "SEU_SENDER_ID",
-        appId: "SEU_APP_ID"
-    };
-    
-    firebase.initializeApp(firebaseConfig);
-    const firestore = firebase.firestore();
-    */
     
     // Acessar a câmera
     async function startCamera(facingMode) {
@@ -107,12 +92,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             id: Date.now(),
             data: imageData,
             timestamp: new Date().toISOString(),
-            synced: false
+            filename: `foto_${new Date().toISOString().slice(0, 10)}_${Date.now()}.jpg`
         };
         
         await savePhotoToDB(photo);
         addPhotoToGallery(photo);
         updateStorageUsage();
+        showStatus("Foto salva com sucesso!", "success");
     });
     
     // Salvar foto no IndexedDB
@@ -141,18 +127,42 @@ document.addEventListener('DOMContentLoaded', async function() {
         img.src = photo.data;
         img.className = 'photo';
         
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'photo-actions';
+        
+        // Botão de download
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'photo-btn download-btn';
+        downloadBtn.innerHTML = '<i class="fas fa-download"></i>';
+        downloadBtn.title = 'Download';
+        downloadBtn.addEventListener('click', () => downloadPhoto(photo));
+        
+        // Botão de compartilhamento
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'photo-btn share-btn';
+        shareBtn.innerHTML = '<i class="fas fa-share-alt"></i>';
+        shareBtn.title = 'Compartilhar';
+        shareBtn.addEventListener('click', () => sharePhoto(photo));
+        
+        // Botão de exclusão
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
+        deleteBtn.className = 'photo-btn delete-btn';
         deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
-        deleteBtn.addEventListener('click', async function() {
+        deleteBtn.title = 'Excluir';
+        deleteBtn.addEventListener('click', async () => {
             await deletePhoto(photo.id);
             photoContainer.remove();
             updateStorageUsage();
+            showStatus("Foto excluída", "info");
         });
         
+        actionsDiv.appendChild(downloadBtn);
+        actionsDiv.appendChild(shareBtn);
+        actionsDiv.appendChild(deleteBtn);
+        
         photoContainer.appendChild(img);
-        photoContainer.appendChild(deleteBtn);
-        gallery.appendChild(photoContainer);
+        photoContainer.appendChild(actionsDiv);
+        gallery.insertBefore(photoContainer, gallery.firstChild);
     }
     
     // Apagar foto
@@ -171,12 +181,54 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
+    // Baixar foto
+    async function downloadPhoto(photo) {
+        try {
+            const link = document.createElement('a');
+            link.href = photo.data;
+            link.download = photo.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showStatus(`Foto "${photo.filename}" baixada`, "success");
+        } catch (error) {
+            console.error('Erro ao baixar foto:', error);
+            showStatus("Erro ao baixar foto", "error");
+        }
+    }
+    
+    // Compartilhar foto
+    async function sharePhoto(photo) {
+        try {
+            // Converter data URL para blob
+            const blob = await (await fetch(photo.data)).blob();
+            const file = new File([blob], photo.filename, { type: 'image/jpeg' });
+            
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Foto da Câmera App',
+                    text: 'Confira esta foto que eu tirei!'
+                });
+            } else {
+                // Fallback para dispositivos sem Web Share API
+                downloadPhoto(photo);
+            }
+        } catch (error) {
+            console.error('Erro ao compartilhar:', error);
+            // Se o compartilhamento falhar, oferece para baixar
+            downloadPhoto(photo);
+        }
+    }
+    
     // Carregar fotos salvas
     async function loadPhotosFromDB() {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(['photos'], 'readonly');
             const store = transaction.objectStore('photos');
-            const request = store.getAll();
+            const index = store.index('timestamp');
+            const request = index.getAll();
             
             request.onsuccess = (event) => {
                 resolve(event.target.result || []);
@@ -189,45 +241,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // Sincronizar com Firebase (opcional)
-    syncBtn.addEventListener('click', async function() {
-        showStatus("Sincronização com nuvem desativada neste modo", "info");
-        /*
-        try {
-            showStatus("Iniciando sincronização...", "info");
-            
-            const photos = await loadPhotosFromDB();
-            const unsynced = photos.filter(photo => !photo.synced);
-            
-            if (unsynced.length === 0) {
-                showStatus("Todas as fotos já estão sincronizadas", "success");
-                return;
-            }
-            
-            const batch = firestore.batch();
-            const photosRef = firestore.collection('userPhotos');
-            
-            for (const photo of unsynced) {
-                const docRef = photosRef.doc(photo.id.toString());
-                batch.set(docRef, {
-                    imageData: photo.data,
-                    timestamp: photo.timestamp,
-                    device: navigator.userAgent
-                });
-                
-                photo.synced = true;
-                await savePhotoToDB(photo);
-            }
-            
-            await batch.commit();
-            showStatus(`${unsynced.length} fotos sincronizadas com sucesso!`, "success");
-        } catch (error) {
-            console.error('Erro na sincronização:', error);
-            showStatus("Erro ao sincronizar fotos", "error");
-        }
-        */
-    });
-    
     // Calcular espaço utilizado
     async function updateStorageUsage() {
         try {
@@ -235,12 +248,14 @@ document.addEventListener('DOMContentLoaded', async function() {
             let totalSize = 0;
             
             photos.forEach(photo => {
-                // Aproximação do tamanho (data URL tem overhead de ~33%)
-                totalSize += photo.data.length * 0.75;
+                totalSize += photo.data.length * 0.75; // Aproximação do tamanho
             });
             
             const mbUsed = (totalSize / (1024 * 1024)).toFixed(2);
-            storageSpaceEl.textContent = `Espaço utilizado: ${mbUsed} MB`;
+            const photoCount = photos.length;
+            
+            storageSpaceEl.textContent = 
+                `Fotos armazenadas: ${photoCount} | Espaço utilizado: ${mbUsed} MB`;
         } catch (error) {
             console.error('Erro ao calcular espaço:', error);
         }
@@ -251,23 +266,31 @@ document.addEventListener('DOMContentLoaded', async function() {
         statusEl.textContent = message;
         statusEl.className = `status ${type}`;
         
-        if (type !== 'info') {
-            setTimeout(() => {
-                statusEl.style.display = 'none';
-            }, 5000);
-        }
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, 3000);
     }
     
     // Inicializar aplicação
-    try {
-        await initDB();
-        await startCamera(currentFacingMode);
-        
-        const photos = await loadPhotosFromDB();
-        photos.sort((a, b) => b.id - a.id).forEach(addPhotoToGallery);
-        
-        await updateStorageUsage();
-    } catch (error) {
-        showStatus(`Erro ao iniciar aplicação: ${error}`, "error");
+    async function initApp() {
+        try {
+            await initDB();
+            await startCamera(currentFacingMode);
+            
+            const photos = await loadPhotosFromDB();
+            photos.reverse().forEach(addPhotoToGallery); // Mostrar as mais recentes primeiro
+            
+            await updateStorageUsage();
+            
+            // Verificar suporte a compartilhamento
+            if (!navigator.share) {
+                console.log('Web Share API não suportada');
+            }
+        } catch (error) {
+            showStatus(`Erro ao iniciar aplicação: ${error}`, "error");
+        }
     }
+    
+    // Iniciar
+    initApp();
 });
