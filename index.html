@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Câmera App com Armazenamento Local</title>
+    <title>Câmera App com Acesso às Fotos</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
@@ -46,10 +46,10 @@
         #switch-camera:hover {
             background-color: #0b7dda;
         }
-        #sync-btn {
+        .action-btn {
             background-color: #9c27b0;
         }
-        #sync-btn:hover {
+        .action-btn:hover {
             background-color: #7b1fa2;
         }
         #gallery {
@@ -71,11 +71,15 @@
             border-radius: 4px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        .delete-btn {
+        .photo-actions {
             position: absolute;
             top: -10px;
-            right: -10px;
-            background-color: #ff4444;
+            left: -10px;
+            display: flex;
+            gap: 5px;
+        }
+        .photo-btn {
+            background-color: #555;
             color: white;
             border: none;
             border-radius: 50%;
@@ -83,6 +87,18 @@
             height: 25px;
             cursor: pointer;
             font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .delete-btn {
+            background-color: #ff4444;
+        }
+        .download-btn {
+            background-color: #4CAF50;
+        }
+        .share-btn {
+            background-color: #2196F3;
         }
         .section-title {
             margin-top: 30px;
@@ -120,10 +136,16 @@
             font-size: 14px;
             color: #666;
         }
+        #access-options {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
-    <h1>Câmera App Local</h1>
+    <h1>Câmera App com Acesso às Fotos</h1>
     
     <div id="camera-container">
         <video id="camera-view" autoplay playsinline></video>
@@ -134,17 +156,20 @@
             <button id="capture-btn" class="btn">
                 <i class="fas fa-camera"></i> Tirar Foto
             </button>
-            <button id="sync-btn" class="btn">
-                <i class="fas fa-cloud-upload-alt"></i> Sincronizar
-            </button>
         </div>
         <canvas id="camera-canvas" style="display: none;"></canvas>
+    </div>
+    
+    <div id="access-options">
+        <h3>Como acessar suas fotos:</h3>
+        <p>1. Toque no ícone de download para salvar no seu dispositivo</p>
+        <p>2. Use o ícone de compartilhamento para enviar por apps</p>
+        <p>3. Todas as fotos ficam armazenadas localmente</p>
     </div>
     
     <div id="status" class="status"></div>
     
     <div class="storage-info">
-        <p>Fotos armazenadas localmente no seu dispositivo</p>
         <p id="storage-space">Calculando espaço utilizado...</p>
     </div>
     
@@ -153,10 +178,6 @@
         <!-- Fotos serão adicionadas aqui -->
     </div>
 
-    <!-- Firebase (opcional para sincronização) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    
     <script src="app.js"></script>
 </body>
 </html>
