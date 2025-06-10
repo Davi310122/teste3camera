@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Câmera App com Armazenamento Local</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        #camera-container {
+            margin: 20px 0;
+            position: relative;
+        }
+        #camera-view {
+            width: 100%;
+            max-width: 400px;
+            background-color: #eee;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        .btn {
+            padding: 10px 20px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        #capture-btn {
+            background-color: #4CAF50;
+        }
+        #capture-btn:hover {
+            background-color: #45a049;
+        }
+        #switch-camera {
+            background-color: #2196F3;
+        }
+        #switch-camera:hover {
+            background-color: #0b7dda;
+        }
+        #sync-btn {
+            background-color: #9c27b0;
+        }
+        #sync-btn:hover {
+            background-color: #7b1fa2;
+        }
+        #gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .photo-container {
+            position: relative;
+            width: 150px;
+        }
+        .photo {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .delete-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .section-title {
+            margin-top: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+            display: block;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+            display: block;
+        }
+        .info {
+            background-color: #d9edf7;
+            color: #31708f;
+            display: block;
+        }
+        .storage-info {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Câmera App Local</h1>
+    
+    <div id="camera-container">
+        <video id="camera-view" autoplay playsinline></video>
+        <div class="controls">
+            <button id="switch-camera" class="btn">
+                <i class="fas fa-sync-alt"></i> Trocar Câmera
+            </button>
+            <button id="capture-btn" class="btn">
+                <i class="fas fa-camera"></i> Tirar Foto
+            </button>
+            <button id="sync-btn" class="btn">
+                <i class="fas fa-cloud-upload-alt"></i> Sincronizar
+            </button>
+        </div>
+        <canvas id="camera-canvas" style="display: none;"></canvas>
+    </div>
+    
+    <div id="status" class="status"></div>
+    
+    <div class="storage-info">
+        <p>Fotos armazenadas localmente no seu dispositivo</p>
+        <p id="storage-space">Calculando espaço utilizado...</p>
+    </div>
+    
+    <h2 class="section-title">Galeria de Fotos</h2>
+    <div id="gallery">
+        <!-- Fotos serão adicionadas aqui -->
+    </div>
+
+    <!-- Firebase (opcional para sincronização) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    
+    <script src="app.js"></script>
+</body>
+</html>
